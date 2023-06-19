@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="pip-sim:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/pip_sim_jar</output-path>
+    <root id="archive" name="pip-sim.jar">
+      <element id="module-output" name="pip-sim" />
+    </root>
+  </artifact>
+</component>
