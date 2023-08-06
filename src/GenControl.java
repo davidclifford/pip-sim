@@ -83,10 +83,10 @@ public class GenControl {
     public static final int BUS_REQUEST = (1<<24);
     public static final int PC_INC = (1<<25);
 
-    private static char ctrl1a[] = new char[1<<12];
-    private static char ctrl1b[] = new char[1<<12];
-    private static char ctrl2a[] = new char[1<<12];
-    private static char ctrl2b[] = new char[1<<12];
+    private static char[] ctrl1a = new char[1<<12];
+    private static char[] ctrl1b = new char[1<<12];
+    private static char[] ctrl2a = new char[1<<12];
+    private static char[] ctrl2b = new char[1<<12];
 
     private static int do_instruction(int opcode, int flags) {
         boolean carry = (flags & 0x01) != 0;

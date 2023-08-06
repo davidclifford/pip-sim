@@ -217,9 +217,11 @@ public class Psim {
         int B = 0;
         int AH = 0;
         int AL = 0;
-        int IR = 0;
-        int phase = 0;
+        int PIPE0 = 0;
+        int PIPE1 = 0;
+        int PIPE2 = 0;
         int FR = 0;
+        int K = 0;
 
         int ALUOP    = 0x001f;
         int LOADOP   = 0x0007;
@@ -234,8 +236,8 @@ public class Psim {
         int PCSHIFT = 14;
         int USRESET  = 0x0001;
         int USSHIFT = 15; // Active low
-        int IRSHIFT  = 4;
-        int FRSHIFT = 4 + 8;
+        int IRSHIFT  = 0;
+        int FRSHIFT = 8;
         int CSHIFT = 8;
         int VSHIFT = 9;
         int ZSHIFT = 10;
@@ -245,6 +247,31 @@ public class Psim {
         int ALURESULT = 1;
         int UARTRESULT = 2;
         int VIDRESULT = 3;
+
+        int LOAD_CONSTANT = (1<<5);
+        int MEM_REQ = (1<<6);
+
+        // PIPE 2 - bit [31-16]
+        // Data Bus Assert - bits [18-16]
+        int DA_MEM = 0x00<<16;
+        int DA_ALU = 0x01<<16;
+        int DA_CONSTANT = 0x02<<16;
+        int DA_IO = 0x03<<16;
+        int DA_IOFLAGS = 0x04<<16;
+
+        // Data Bus Read - bits [22-19]
+        int DR_MEM = 0x00<<19;
+        int DR_A = 0x01<<19;
+        int DR_B = 0x02<<19;
+        int DR_T = 0x03<<19;
+        int DR_PC = 0x04<<19;
+        int DR_MARH = 0x05<<19;
+        int DR_MARL = 0x06<<19;
+        int DR_IO = 0x07<<19;
+
+        int ADDRESS_ASSERT = (1<<23);
+        int BUS_REQUEST = (1<<24);
+        int PC_INC = (1<<25);
 
         String [] ALUop = {
             "0",
@@ -283,7 +310,10 @@ public class Psim {
 
         // Load in binary files for ALU, Decode, Rom, Ram and Vram
         char[] ALURom = new char [0x400000];
-        char[] DecodeRom = new char [0x20000];
+        char[] ctrl1a = new char[1<<12];
+        char[] ctrl1b = new char[1<<12];
+        char[] ctrl2a = new char[1<<12];
+        char[] ctrl2b = new char[1<<12];
         char[] Rom = new char [0x8000];
         char[] Ram = new char [0x8000];
 
@@ -299,10 +329,10 @@ public class Psim {
 
         try {
             read_bytes("alu.bin", ALURom, 0);
-            if (extended)
-                read_bytes("27Cucode2.rom", DecodeRom, 0);
-            else
-                read_bytes("27Cucode.rom", DecodeRom, 0);
+            read_bytes("ctrl1a.bin", ctrl1a, 0);
+            read_bytes("ctrl1b.bin", ctrl1b, 0);
+            read_bytes("ctrl2a.bin", ctrl2a, 0);
+            read_bytes("ctrl2b.bin", ctrl2b, 0);
             read_bytes("instr.bin", Rom, 0);
             read_bytes("ssd.bin", SSD, 0);
             if (executable != null) {
@@ -325,6 +355,7 @@ public class Psim {
 
         long last = System.nanoTime();
         long now = last;
+
         while( true ) {
             try {
                 // Cycle accurate timing
@@ -335,28 +366,34 @@ public class Psim {
                 }
                 last = now;
 
-                // Work out the decode ROM index
-                int decodeidx = (FR << FRSHIFT) | (IR << IRSHIFT) | phase;
+                // Move last instruction up pipeline
+                PIPE2 = PIPE1;
+
+                // Fetch next instruction (Unless BUSREQ and MEMREQ)
+                if (PC >= 0x8000)
+                    PIPE1 = (char)Ram[PC-0x8000];
+                else
+                    PIPE1 = (char)Rom[PC];
+
+                // Work out the decode PIPELINE ROM index
+                int decodeidx1 = (FR << FRSHIFT) | (PIPE1 << IRSHIFT);
+                int decodeidx2 = (FR << FRSHIFT) | (PIPE2 << IRSHIFT);
                 // Get the microinstruction
-                int uinst = ((((char)DecodeRom[decodeidx*2+1]) << 8) | ((char)DecodeRom[decodeidx*2]));
+                int ctrl1 = ((((char)ctrl1a[decodeidx1]) << 8) | ((char)ctrl1b[decodeidx1]));
+                int ctrl2 = ((((char)ctrl2a[decodeidx2]) << 8) | ((char)ctrl2b[decodeidx2]));
+                int ctrl = ctrl2<<16 | ctrl1;
 
                 boolean carry = false;
                 boolean overflow = false;
                 boolean zero = false;
                 boolean negative = false;
-                boolean divbyzero = false;
 
                 // Decode the microinstruction
-                int aluop = uinst & ALUOP;
-                int loadop = (uinst >> LOADSHIFT) & LOADOP;
-                int dbusop = (uinst >> DBUSSHIFT) & DBUSOP;
-                int jumpop = (uinst >> JUMPSHIFT) & JUMPOP;
-                int arena = (uinst >> ARSHIFT) & ARENA;
-                int pcincr = (uinst >> PCSHIFT) & PCINCR;
-                int usreset = (uinst >> USSHIFT) & USRESET;
+                int aluop = ctrl & ALUOP;
+
                 if (debug) {
-                    System.out.printf("PC %04x IR %02x p %01x ui %04x upa %d%d%d \n",
-                            PC, IR, phase, uinst, usreset, pcincr, arena);
+                    System.out.printf("PC %04x P1 %02x P2 %02x CTRL %04x\n",
+                            PC, PIPE1, PIPE2, ctrl);
                 }
                 if (slow) {
                     // Wait one second
