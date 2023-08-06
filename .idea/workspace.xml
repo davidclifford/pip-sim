@@ -28,14 +28,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="246ed073-53d5-4bbf-a247-d221f7f48796" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/27Cucode.rom" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/Examples/bounce.bin" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/alu.bin" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/instr.bin" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/GenControl.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/META-INF/MANIFEST.MF" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/Psim.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/ssd.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/GenControl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/GenControl.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
