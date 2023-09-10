@@ -23,8 +23,8 @@ public class GenControl {
      *
      ************************************/
 
-    // PIPE 1 - bits [15-0]
-    // ALU OP - bits [4-0]
+    // PIPE 1 - bits [15-0] 16 bits
+    // ALU OP - bits [4-0] 5 bits 32 ops
     public final static int ALU_ZERO = 0x00;
     public final static int ALU_A = 0x01;
     public final static int ALU_B = 0x02;
@@ -57,31 +57,35 @@ public class GenControl {
     public final static int ALU_NOTB = 0x1d;
     public final static int ALU_ADIV10B = 0x1e;
     public final static int ALU_AMOD10B = 0x1f;
+    public static final int ALU_MASK = 0x1f;
 
     public final static int LOAD_CONSTANT = (1<<5);
-    public final static int MEM_REQ = (1<<6);
+    public final static int NO_FETCH = (1<<6);
 
     // PIPE 2 - bit [31-16]
-    // Data Bus Assert - bits [18-16]
-    public final static int DA_MEM = 0x00<<16;
-    public final static int DA_ALU = 0x01<<16;
-    public final static int DA_CONSTANT = 0x02<<16;
-    public final static int DA_IO = 0x03<<16;
-    public final static int DA_IOFLAGS = 0x04<<16;
+    // Data Bus Assert - bits [18-16] 3 bits
+    public final static int DA_NONE = 0x00<<16;
+    public final static int DA_MEM = 0x01<<16;
+    public final static int DA_ALU = 0x02<<16;
+    public final static int DA_CONSTANT = 0x03<<16;
+    public final static int DA_IO = 0x04<<16;
+    public final static int DA_IOFLAGS = 0x05<<16;
+    public final static int DA_MASK = 0x7<<16;
 
-    // Data Bus Read - bits [22-19]
-    public final static int DR_MEM = 0x00<<19;
-    public final static int DR_A = 0x01<<19;
-    public final static int DR_B = 0x02<<19;
-    public final static int DR_T = 0x03<<19;
-    public final static int DR_PC = 0x04<<19;
-    public final static int DR_MARH = 0x05<<19;
-    public final static int DR_MARL = 0x06<<19;
-    public final static int DR_IO = 0x07<<19;
+    // Data Bus Read - bits [22-19] 4 bits
+    public final static int DR_NONE = 0x00<<19;
+    public final static int DR_MEM = 0x01<<19;
+    public final static int DR_A = 0x02<<19;
+    public final static int DR_B = 0x03<<19;
+    public final static int DR_T = 0x04<<19;
+    public final static int DR_PC = 0x05<<19;
+    public final static int DR_MARH = 0x06<<19;
+    public final static int DR_MARL = 0x07<<19;
+    public final static int DR_IO = 0x08<<19;
+    public static final int DR_MASK = 0x0F<<19;
 
     public static final int ADDRESS_ASSERT = (1<<23);
     public static final int BUS_REQUEST = (1<<24);
-    public static final int PC_INC = (1<<25);
 
     private static char[] ctrl1a = new char[1<<12];
     private static char[] ctrl1b = new char[1<<12];
@@ -94,8 +98,7 @@ public class GenControl {
         boolean neg = ((flags >> 2) & 0x01) != 0;
         boolean over = ((flags >> 3) & 0x01) != 0;
 
-        int pcinc = PC_INC;
-        int control_word = pcinc;
+        int control_word = 0;
 
         //NOP
         // DO NOTHING

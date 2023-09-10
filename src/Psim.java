@@ -215,6 +215,7 @@ public class Psim {
         // Initialize simulation
         int A = 0;
         int B = 0;
+        int T = 0;
         int AH = 0;
         int AL = 0;
         int PIPE0 = 0;
@@ -222,20 +223,8 @@ public class Psim {
         int PIPE2 = 0;
         int FR = 0;
         int K = 0;
+        int ALU_OUT = 0;
 
-        int ALUOP    = 0x001f;
-        int LOADOP   = 0x0007;
-        int LOADSHIFT = 5;
-        int DBUSOP   = 0x0003;
-        int DBUSSHIFT = 8;
-        int JUMPOP   = 0x0007;
-        int JUMPSHIFT = 10;
-        int ARENA    = 0x0001;
-        int ARSHIFT = 13; // Active low
-        int PCINCR   = 0x0001;
-        int PCSHIFT = 14;
-        int USRESET  = 0x0001;
-        int USSHIFT = 15; // Active low
         int IRSHIFT  = 0;
         int FRSHIFT = 8;
         int CSHIFT = 8;
@@ -243,35 +232,42 @@ public class Psim {
         int ZSHIFT = 10;
         int NSHIFT = 11;
         int DSHIFT = 12;
-        int MEMRESULT = 0;
-        int ALURESULT = 1;
-        int UARTRESULT = 2;
-        int VIDRESULT = 3;
 
-        int LOAD_CONSTANT = (1<<5);
-        int MEM_REQ = (1<<6);
+        int LOAD_K_SHIFT = 5;
+        int NO_FETCH_SHIFT = 6;
+        int LOAD_CONSTANT = (1<<LOAD_K_SHIFT);
+        int NO_FETCH = (1<<NO_FETCH_SHIFT);
 
         // PIPE 2 - bit [31-16]
         // Data Bus Assert - bits [18-16]
-        int DA_MEM = 0x00<<16;
-        int DA_ALU = 0x01<<16;
-        int DA_CONSTANT = 0x02<<16;
-        int DA_IO = 0x03<<16;
-        int DA_IOFLAGS = 0x04<<16;
+        int ALU_MASK = 0x1f;
+
+        int DA_SHIFT = 16;
+        int DA_NONE = 0x00<<DA_SHIFT;
+        int DA_MEM = 0x01<<DA_SHIFT;
+        int DA_ALU = 0x02<<DA_SHIFT;
+        int DA_CONSTANT = 0x03<<DA_SHIFT;
+        int DA_IO = 0x04<<DA_SHIFT;
+        int DA_IOFLAGS = 0x05<<DA_SHIFT;
+        int DA_MASK = 0x7<<DA_SHIFT;
 
         // Data Bus Read - bits [22-19]
-        int DR_MEM = 0x00<<19;
-        int DR_A = 0x01<<19;
-        int DR_B = 0x02<<19;
-        int DR_T = 0x03<<19;
-        int DR_PC = 0x04<<19;
-        int DR_MARH = 0x05<<19;
-        int DR_MARL = 0x06<<19;
-        int DR_IO = 0x07<<19;
+        int DR_SHIFT = 19;
+        int DR_NONE = 0x00<<DR_SHIFT;
+        int DR_MEM = 0x01<<DR_SHIFT;
+        int DR_A = 0x02<<DR_SHIFT;
+        int DR_B = 0x03<<DR_SHIFT;
+        int DR_T = 0x04<<DR_SHIFT;
+        int DR_PC = 0x05<<DR_SHIFT;
+        int DR_MARH = 0x06<<DR_SHIFT;
+        int DR_MARL = 0x07<<DR_SHIFT;
+        int DR_IO = 0x09<<DR_SHIFT;
+        int DR_MASK = 0xF<<DR_SHIFT;
 
-        int ADDRESS_ASSERT = (1<<23);
-        int BUS_REQUEST = (1<<24);
-        int PC_INC = (1<<25);
+        int ADDRESS_SHIFT = 23;
+        int BUS_REQ_SHIFT = 24;
+        int ADDRESS_ASSERT = (1<<ADDRESS_SHIFT);
+        int BUS_REQUEST = (1<<BUS_REQ_SHIFT);
 
         String [] ALUop = {
             "0",
@@ -355,6 +351,8 @@ public class Psim {
 
         long last = System.nanoTime();
         long now = last;
+        boolean fetch_stage_1 = false;
+        boolean fetch_stage_2 = false;
 
         while( true ) {
             try {
@@ -368,230 +366,186 @@ public class Psim {
 
                 // Move last instruction up pipeline
                 PIPE2 = PIPE1;
-
-                // Fetch next instruction (Unless BUSREQ and MEMREQ)
-                if (PC >= 0x8000)
-                    PIPE1 = (char)Ram[PC-0x8000];
-                else
-                    PIPE1 = (char)Rom[PC];
+                PIPE1 = PIPE0;
 
                 // Work out the decode PIPELINE ROM index
                 int decodeidx1 = (FR << FRSHIFT) | (PIPE1 << IRSHIFT);
                 int decodeidx2 = (FR << FRSHIFT) | (PIPE2 << IRSHIFT);
                 // Get the microinstruction
-                int ctrl1 = ((((char)ctrl1a[decodeidx1]) << 8) | ((char)ctrl1b[decodeidx1]));
-                int ctrl2 = ((((char)ctrl2a[decodeidx2]) << 8) | ((char)ctrl2b[decodeidx2]));
-                int ctrl = ctrl2<<16 | ctrl1;
+                int ctrl1 = ((((char) ctrl1a[decodeidx1]) << 8) | ((char) ctrl1b[decodeidx1]));
+                int ctrl2 = ((((char) ctrl2a[decodeidx2]) << 8) | ((char) ctrl2b[decodeidx2]));
+                int ctrl = ctrl2 << 16 | ctrl1;
 
                 boolean carry = false;
                 boolean overflow = false;
                 boolean zero = false;
                 boolean negative = false;
 
-                // Decode the microinstruction
-                int aluop = ctrl & ALUOP;
+                // Check Fetch condition
+                if ((ctrl & NO_FETCH) == 0) {
+                    fetch_stage_1 = true;
+                }
+                if ((ctrl & BUS_REQUEST) == 0) {
+                    fetch_stage_2 = true;
+                }
+
 
                 if (debug) {
-                    System.out.printf("PC %04x P1 %02x P2 %02x CTRL %04x\n",
-                            PC, PIPE1, PIPE2, ctrl);
+                    System.out.printf("PC:%04x P0:%02x P1:%02x P2:%02x FR:%02x CTRL:%04x\n",
+                            PC, PIPE0, PIPE1, PIPE2, FR, ctrl);
                 }
                 if (slow) {
                     // Wait one second
                     wait(1000);
                 }
 
-                // Do the ALU operation.
-                int databus = 0;
-                if (dbusop == ALURESULT) {
-                    int alu_addr = ((aluop << 16) | (A << 8) | B) * 2;
-                    int aluresult = ((ALURom[alu_addr+1]&0xff) << 8) | (ALURom[alu_addr]&0xff);
-                    if (debug) {
-                        System.out.printf("AB %02x %02x %s %04x \n", A, B, ALUop[aluop], aluresult);
-                    }
+                //-------- Stage 2 Pipeline -------------------
+                int data_assert = ctrl & DA_MASK;
+                int data_read = ctrl & DR_MASK;
+                int address_assert = ctrl & ADDRESS_ASSERT;
+                int bus_req = ctrl & BUS_REQUEST;
 
-                    // Store value of flags in FR if using extended CPU
-                    FR = extended ? (aluresult >> CSHIFT) & 0x0f : 0;
+                if (fetch_stage_2)
+                    PC = (PC + 1) & 0xffff;
+
+                // Assert to Databus
+                int data_bus = 0;
+                if (data_assert == DA_MEM) {
+                    data_bus = PIPE0;
+                } else if (data_assert == DA_ALU) {
+                    data_bus = ALU_OUT;
+                } else if (data_assert == DA_CONSTANT) {
+                    data_bus = K;
+                } else if (data_assert == DA_IO) {
+                    if (keys.length() > 0) {
+                        data_bus = keys.charAt(0);
+                        //if (loadop != 0) {
+                        //  keys = keys.substring(1);
+                        //}
+                    } else {
+                        data_bus = 0;
+                    }
+                }
+
+                // Determine if Memory Address is PC or MAR
+                int mem_address = address_assert == ADDRESS_ASSERT ? AH << 8 | AL : PC;
+
+                if (debug)
+                    System.out.printf("data_read %x data_bus %02x \n", data_read, data_bus);
+
+                //Load from the data bus
+                if (data_read == DR_A) {
+                    A = data_bus;
+                    if (debug)
+                        System.out.printf("->A %02x\n", A);
+                }
+                if (data_read == DR_B) {
+                    B = data_bus;
+                    if (debug)
+                        System.out.printf("->B %02x\n", B);
+                }
+                if (data_read == DR_T) {
+                    T = data_bus;
+                    if (debug)
+                        System.out.printf("->B %02x\n", T);
+                }
+                if (data_read == DR_MEM) {
+                    if (mem_address >= 0x8000) {
+                        Ram[mem_address] = (char) data_bus;
+                    } else {
+                        // TODO: Bank Register (SSD etc)
+                        Vram[mem_address] = (char) data_bus;
+                    }
+                }
+//                if (data_read == DR_MEM) {
+//                    // Memory mapped I/O - BANK
+//                    if (address == BANK_ADDR) {
+//                        BANK = databus;
+//                    }
+//                    // RAM
+//                    if (address >= 0x8000) {
+//                        Ram[address - 0x8000] = (char) databus;
+//                        if (debug)
+//                            System.out.printf("->RAM %04x %02x\n", address - 0x8000, (byte) Ram[address - 0x8000]);
+//                    } else {
+//                        // Use BANK register to determine VGA or SSD memory
+//                        if (BANK == 0) {
+//                            plot(address, databus, Vram[address]);
+//                            Vram[address] = (char) databus;
+//                            if (debug)
+//                                System.out.printf("->VRAM %04x %02x\n", address, (byte) Vram[address]);
+//                        } else if (BANK >= 0xF0) {
+//                            set_ssd(address, databus, debug);
+//                            if (debug)
+//                                System.out.printf("->SSD [%02x] %04x %02x\n", BANK, address, (byte) Vram[address]);
+//                        } else if (BANK == 0x10) {
+//                            int a = address % 4;
+//                            if (a == 0) {
+//                                MREG0 = (short) ((MREG0 & 0x00ff) | ((short) databus << 8));
+//                            } else if (a == 1) {
+//                                MREG0 = (short) ((MREG0 & 0xff00) | ((short) databus << 0));
+//                            } else if (a == 2) {
+//                                MREG1 = (short) ((MREG1 & 0x00ff) | ((short) databus << 8));
+//                            } else if (a == 3) {
+//                                MREG1 = (short) ((MREG1 & 0xff00) | ((short) databus << 0));
+//                            }
+//                        }
+//                    }
+//                }
+                if (data_read == DR_MARH) {
+                    AH = data_bus;
+                    if (debug)
+                        System.out.printf("->AH %02x\n", AH);
+                }
+                if (data_read == DR_MARL) {
+                    AL = data_bus;
+                    if (debug)
+                        System.out.printf("->AL %02x\n", AL);
+                }
+                if (data_read == DR_IO) {
+                    System.out.printf("%c", data_bus); // Flush the output
+                    if (debug)
+                        System.out.printf("->IO %c", data_bus);
+                }
+                if (data_read == DR_PC) {
+                    PC = (T<<8) | data_bus;
+                    if (debug)
+                        System.out.printf("->PC %c", data_bus);
+                }
+
+                //-------- Stage 1 Pipeline -------------------
+                int load_constant = ctrl & LOAD_CONSTANT;
+                int no_fetch = ctrl & NO_FETCH;
+
+                if (load_constant == LOAD_CONSTANT) {
+                    if (mem_address >= 0x8000) {
+                        K = Ram[mem_address - 0x8000];
+                    } else {
+                        K = Rom[mem_address];
+                    }
+                }
+
+                // Do ALU computation
+                int alu_op = ctrl & ALU_MASK;
+                int alu_addr = ((alu_op << 16) | (A << 8) | B) * 2;
+                int aluresult = ((ALURom[alu_addr + 1] & 0xff) << 8) | (ALURom[alu_addr] & 0xff);
+                if (debug) {
+                    System.out.printf("A:%02x B:%02x OP:%s RES:%04x \n", A, B, ALUop[alu_op], aluresult);
+                }
+
+                // Store value of flags in FR
+                if ((ctrl & DA_ALU) != 0) {
+                    FR = (aluresult >> FRSHIFT) & 0x01f;
                     // Extract the flags from the result, and remove from the result
                     carry = ((aluresult >> CSHIFT) & 1) == 1;
                     overflow = ((aluresult >> VSHIFT) & 1) == 1;
                     zero = ((aluresult >> ZSHIFT) & 1) == 1;
                     negative = ((aluresult >> NSHIFT) & 1) == 1;
-                    divbyzero = ((aluresult >> DSHIFT) & 1) == 1;
                     if (debug) {
-                        System.out.printf("FL %b %b %b %b %b\n", carry, overflow, zero, negative, divbyzero);
-                    }
-                    databus = aluresult & 0xff;
-                }
-
-                // Determine the address on the address bus: AR or PC
-                int address = 0;
-                if (arena == 0) {
-                    address = ((char)AH) << 8 | AL;
-                    if (debug) {
-                        System.out.printf("AR %02x%02x\n", AH, AL);
-                        System.out.printf("AR %04x\n", address);
-                    }
-                } else {
-                    address = PC;
-                    if (debug) {
-                        System.out.printf("PC %04x \n", PC);
+                        System.out.printf("FL C:%b O:%b Z:%b N:%b\n", carry, overflow, zero, negative);
                     }
                 }
-
-                // Get the memory value
-                if (dbusop == MEMRESULT) {
-                    if (address >= 0x8000)
-                        databus = (char)Ram[address-0x8000];
-                    else
-                        databus = (char)Rom[address];
-                }
-
-                // Get the video memory value
-                if (dbusop == VIDRESULT) {
-                    if (address >= 0x8000)
-                        databus = (char)Vram[address-0x8000];
-                    else
-                        if (BANK < 0x10) {
-                            databus = (char) Vram[address];
-                        } else if (BANK >= 0xF0) {
-                            databus = (char) SSD[(address & 0x7fff) + 0x8000 * (BANK & 0x0F)];
-                        } else if (BANK == 0x10) {
-                            int mult = MREG0 * MREG1;
-                            databus = (mult >> ((3 - (address % 4))*8)) & 0xff;
-                        } else {
-                            databus = 0;
-                        }
-                }
-
-                // Read UART
-                 if (dbusop == UARTRESULT) {
-                     if (keys.length() > 0) {
-                         databus = keys.charAt(0);
-                         if (loadop != 0) {
-                             keys = keys.substring(1);
-                         }
-                     } else {
-                         databus = 0;
-                     }
-                 }
-
-                 if (debug)
-                    System.out.printf("dop %x dbus %02x \n", dbusop, databus);
-
-                 //Load from the data bus
-                if (loadop == 1) {
-                    IR = databus;
-                    if (debug)
-                        System.out.printf("->IR %02x\n", IR);
-                }
-                if (loadop == 2) {
-                    A = databus;
-                    if (debug)
-                        System.out.printf("->A %02x\n", A);
-                }
-                if (loadop == 3) {
-                    B = databus;
-                    if (debug)
-                        System.out.printf("->B %02x\n", B);
-                }
-                if (loadop == 4) {
-                    // Memory mapped I/O - BANK
-                    if (address == BANK_ADDR) {
-                        BANK = databus;
-                    }
-                    // RAM
-                    if (address >= 0x8000) {
-                        Ram[address - 0x8000] = (char)databus;
-                        if (debug)
-                            System.out.printf("->RAM %04x %02x\n", address - 0x8000, (byte)Ram[address - 0x8000]);
-                    } else {
-                        // Use BANK register to determine VGA or SSD memory
-                        if (BANK == 0) {
-                            plot(address, databus, Vram[address]);
-                            Vram[address] = (char) databus;
-                            if (debug)
-                                System.out.printf("->VRAM %04x %02x\n", address, (byte) Vram[address]);
-                        } else if (BANK >= 0xF0) {
-                            set_ssd(address, databus, debug);
-                            if (debug)
-                                System.out.printf("->SSD [%02x] %04x %02x\n", BANK, address, (byte) Vram[address]);
-                        } else if (BANK == 0x10) {
-                            int a = address % 4;
-                            if (a == 0) {
-                                MREG0 = (short) ((MREG0 & 0x00ff)| ((short)databus << 8));
-                            } else if (a==1) {
-                                MREG0 = (short) ((MREG0 & 0xff00) | ((short)databus << 0));
-                            } else if (a==2) {
-                                MREG1 = (short) ((MREG1 & 0x00ff) | ((short)databus << 8));
-                            } else if (a==3) {
-                                MREG1 = (short) ((MREG1 & 0xff00) | ((short)databus << 0));
-                            }
-                        }
-                    }
-                }
-                if (loadop == 5) {
-                    AH = databus;
-                    if (debug)
-                        System.out.printf("->AH %02x\n", AH);
-                }
-                if (loadop == 6) {
-                    AL = databus;
-                    if (debug)
-                        System.out.printf("->AL %02x\n", AL);
-                }
-                if (loadop == 7) {
-                    System.out.printf("%c", databus); // Flush the output
-                    if (debug)
-                        System.out.printf("->IO %c", databus);
-                }
-
-                //    Increment the PC and the phase
-                if (pcincr == 1)
-                    PC = PC + 1;
-                if (usreset == 0) {
-                    phase = 0;
-                } else {
-                    phase = (phase+1) & 0xf;
-                }
-
-                //    Do any jumps
-                if (jumpop == 1 && carry) {
-                    PC = address;
-                    if (debug)
-                        System.out.print("JC ");
-                }
-
-                if (jumpop == 2 && overflow) {
-                    PC = address;
-                    if (debug)
-                        System.out.print("JO ");
-                }
-                if (jumpop == 3 && zero) {
-                    PC = address;
-                    if (debug)
-                        System.out.print("JZ ");
-                }
-                if (jumpop == 4 && negative) {
-                    PC = address;
-                    if (debug)
-                        System.out.print("JN ");
-                }
-                if (jumpop == 5 && divbyzero) {
-                    PC = address;
-                    if (debug)
-                        System.out.print("JD ");
-                }
-                if (jumpop == 7 && keys.length() == 0) {
-                    PC = address;
-                    if (debug)
-                        System.out.print("JI ");
-                }
-                //    Exit if PC goes to $FFFF
-                if (PC == 0xffff) {
-                    if (debug)
-                        System.out.println();
-                    break;
-                }
+                ALU_OUT = aluresult & 0xff;
 
                 // Do graphics
                 // Blit image and flip every so often
@@ -604,6 +558,17 @@ public class Psim {
                     time = System.currentTimeMillis();
                 }
 
+                // Fetch next instruction (Unless BUSREQ and MEMREQ)
+                if (bus_req + no_fetch == NO_FETCH + BUS_REQUEST) {
+                    if (PC >= 0x8000)
+                        PIPE0 = (char) Ram[PC - 0x8000];
+                    else
+                        PIPE0 = (char) Rom[PC];
+                } else if (bus_req + no_fetch != 0) {
+                    PIPE0 = 0;
+                } else {
+                    PIPE0 = PIPE1;
+                }
                 // Let the OS have a little time...
                 if (!fast && cycle_speed == 0)
                     Thread.yield();
