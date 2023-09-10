@@ -33,7 +33,7 @@ public class Psim {
     static short MREG1 = 0;
 
     public static void usage() {
-        System.out.println("Usage: ./jsim -d -s -f -v -m -c [program.bin] [start execution");
+        System.out.println("Usage: ./psim -d -s -f -v -m -c [program.bin] [start execution");
         System.out.println("d Debug, s Slow, f Fast, v Minimised video, m Start in Monitor, c Cycle accurate");
         System.exit(1);
     }
@@ -559,12 +559,12 @@ public class Psim {
                 }
 
                 // Fetch next instruction (Unless BUSREQ and MEMREQ)
-                if (bus_req + no_fetch == NO_FETCH + BUS_REQUEST) {
+                if (fetch_stage_1 && fetch_stage_2) {
                     if (PC >= 0x8000)
                         PIPE0 = (char) Ram[PC - 0x8000];
                     else
                         PIPE0 = (char) Rom[PC];
-                } else if (bus_req + no_fetch != 0) {
+                } else if (fetch_stage_1 || fetch_stage_2) {
                     PIPE0 = 0;
                 } else {
                     PIPE0 = PIPE1;
@@ -572,6 +572,10 @@ public class Psim {
                 // Let the OS have a little time...
                 if (!fast && cycle_speed == 0)
                     Thread.yield();
+
+                if (PIPE0 == 0xff) {
+                    System.exit(0);
+                }
             } finally {
                 // release resources
                 if( graphics != null )
@@ -716,6 +720,7 @@ public class Psim {
                 data[addr++] = (char) in.readUnsignedByte();
             }
         } catch (EOFException e) {
+            System.out.printf("File %s loaded\n", filename);
         } catch (Exception e) {
             System.out.println(e.getMessage());
         }

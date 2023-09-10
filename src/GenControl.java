@@ -107,9 +107,9 @@ public class GenControl {
         if (opcode == 0x01) {
             control_word |= ALU_ZERO | DA_ALU | DR_A;
         }
-        // MOV A,B
+        // MOV B,A
         else if (opcode == 0x02) {
-            control_word |= ALU_B | DA_ALU | DR_A;
+            control_word |= ALU_A | DA_ALU | DR_B;
         }
         // INC A
         else if (opcode == 0x03) {
