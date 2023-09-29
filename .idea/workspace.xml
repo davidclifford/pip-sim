@@ -28,14 +28,8 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="246ed073-53d5-4bbf-a247-d221f7f48796" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/Examples/add.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Examples/bounce.bin" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ctrl1b.bin" beforeDir="false" afterPath="$PROJECT_DIR$/ctrl1b.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ctrl2b.bin" beforeDir="false" afterPath="$PROJECT_DIR$/ctrl2b.bin" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/instr.bin" beforeDir="false" afterPath="$PROJECT_DIR$/instr.bin" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/GenControl.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/GenControl.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Psim.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/Psim.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -71,7 +65,7 @@
       <recent name="C:\dev\pip-sim\src" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.Psim">
+  <component name="RunManager" selected="Application.GenControl">
     <configuration name="GenControl" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="GenControl" />
       <module name="pip-sim" />
@@ -125,16 +119,5 @@
         </entry>
       </map>
     </option>
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/Psim.java</url>
-          <line>561</line>
-          <option name="timeStamp" value="1" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>
