@@ -333,23 +333,64 @@ public class GenControl {
             control_word |= DA_MEM | DR_B;
             mnemonic = "LDB";
         }
-        // LDA K
+        // MOV A immediate
         else if (opcode == 0x46) {
-            control_word |= DA_CONSTANT | DR_A;
-            mnemonic = "LCA";
+            control_word |= DA_CONSTANT | DR_A | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "MOV_A";
             bytes = 2;
         }
-        // LDB K
+        // MOV B immediate
         else if (opcode == 0x47) {
-            control_word |= DA_CONSTANT | DR_B;
-            mnemonic = "LCB";
+            control_word |= DA_CONSTANT | DR_B | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "MOV_B";
             bytes = 2;
+        }
+        // MOV H immediate
+        else if (opcode == 0x48) {
+            control_word |= DA_CONSTANT | DR_MARH | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "MOV_H";
+            bytes = 2;
+        }
+        // MOV L immediate
+        else if (opcode == 0x49) {
+            control_word |= DA_CONSTANT | DR_MARL | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "MOV_L";
+            bytes = 2;
+        }
+        // MOV T immediate (for jumps)
+        else if (opcode == 0x4a) {
+            control_word |= DA_CONSTANT | DR_T | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "MOV_T";
+            bytes = 2;
+        }
+        // OUT constant
+        else if (opcode == 0x4b) {
+            control_word |= DA_CONSTANT | DR_IO | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "OUT";
+            bytes = 2;
+        }
+        // OUT A
+        else if (opcode == 0x4c) {
+            control_word |= ALU_A | DA_ALU | DR_IO;
+            mnemonic = "OUT A";
+        }
+        // OUT B
+        else if (opcode == 0x4d) {
+            control_word |= ALU_B | DA_ALU | DR_IO;
+            mnemonic = "OUT B";
         }
 
 
+        // JUMPS
+        // JMP
+        else if (opcode == 0x50) {
+            control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+            mnemonic = "JMP";
+            bytes = 2;
+        }
 
         if (mnemonic != null && flags == 0x00) {
-            bw.write(String.format("%02x %d %s\n", opcode, bytes, mnemonic));
+            bw.write(String.format("%02x %d %s \t%08x\n", opcode, bytes, mnemonic, control_word));
         }
         return control_word;
     }
@@ -384,7 +425,7 @@ public class GenControl {
         System.out.println("Creating Control Signals for Pip pipelined CPU");
         try {
             bw = new BufferedWriter(new FileWriter("opcodes", false));
-            for (int flags = 0; flags < 2; flags++) {
+            for (int flags = 0; flags < 16; flags++) {
                 for (int opcode = 0; opcode < 0x100; opcode++) {
                     int control_word = do_instruction(opcode, flags, bw);
                     System.out.printf("%02x %08x   %s\n", opcode, control_word, toBinary(control_word));

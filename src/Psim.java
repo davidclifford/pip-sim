@@ -221,6 +221,7 @@ public class Psim {
         int PIPE0 = 0;
         int PIPE1 = 0;
         int PIPE2 = 0;
+        int PIPE3 = 0;
         int FR = 0;
         int K = 0;
         int ALU_OUT = 0;
@@ -261,8 +262,8 @@ public class Psim {
         int DR_PC = 0x05<<DR_SHIFT;
         int DR_MARH = 0x06<<DR_SHIFT;
         int DR_MARL = 0x07<<DR_SHIFT;
-        int DR_IO = 0x09<<DR_SHIFT;
-        int DR_MASK = 0xF<<DR_SHIFT;
+        int DR_IO = 0x08<<DR_SHIFT;
+        int DR_MASK = 0x0F<<DR_SHIFT;
 
         int ADDRESS_SHIFT = 23;
         int BUS_REQ_SHIFT = 24;
@@ -351,8 +352,6 @@ public class Psim {
 
         long last = System.nanoTime();
         long now = last;
-        boolean fetch_stage_1 = false;
-        boolean fetch_stage_2 = false;
 
         while( true ) {
             try {
@@ -365,6 +364,7 @@ public class Psim {
                 last = now;
 
                 // Move last instruction up pipeline
+                PIPE3 = PIPE2;
                 PIPE2 = PIPE1;
                 PIPE1 = PIPE0;
 
@@ -382,6 +382,8 @@ public class Psim {
                 boolean negative = false;
 
                 // Check Fetch condition
+                boolean fetch_stage_1 = false;
+                boolean fetch_stage_2 = false;
                 if ((ctrl & NO_FETCH) == 0) {
                     fetch_stage_1 = true;
                 }
@@ -391,12 +393,12 @@ public class Psim {
 
 
                 if (debug) {
-                    System.out.printf("PC:%04x P0:%02x P1:%02x P2:%02x FR:%02x CTRL:%04x\n",
-                            PC, PIPE0, PIPE1, PIPE2, FR, ctrl);
+                    System.out.printf("PC:%04x P0:%02x P1:%02x P2:%02x FR:%02x CTRL:%08x\n",
+                            PC, PIPE1, PIPE2, PIPE3, FR, ctrl);
                 }
                 if (slow) {
                     // Wait one second
-                    wait(1000);
+                    wait(100);
                 }
 
                 //-------- Stage 2 Pipeline -------------------
@@ -447,7 +449,7 @@ public class Psim {
                 if (data_read == DR_T) {
                     T = data_bus;
                     if (debug)
-                        System.out.printf("->B %02x\n", T);
+                        System.out.printf("->T %02x\n", T);
                 }
                 if (data_read == DR_MEM) {
                     if (mem_address >= 0x8000) {
@@ -505,12 +507,12 @@ public class Psim {
                 if (data_read == DR_IO) {
                     System.out.printf("%c", data_bus); // Flush the output
                     if (debug)
-                        System.out.printf("->IO %c", data_bus);
+                        System.out.printf("->IO %02x\n", data_bus);
                 }
                 if (data_read == DR_PC) {
                     PC = (T<<8) | data_bus;
                     if (debug)
-                        System.out.printf("->PC %c", data_bus);
+                        System.out.printf("->PC %02x\n", data_bus);
                 }
 
                 //-------- Stage 1 Pipeline -------------------
@@ -545,6 +547,9 @@ public class Psim {
                         System.out.printf("FL C:%b O:%b Z:%b N:%b\n", carry, overflow, zero, negative);
                     }
                 }
+                if (debug)
+                    System.out.println();
+                
                 ALU_OUT = aluresult & 0xff;
 
                 // Do graphics
