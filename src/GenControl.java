@@ -96,9 +96,9 @@ public class GenControl {
     private static int do_instruction(int opcode, int flags, BufferedWriter bw) throws IOException
     {
         boolean carry = (flags & 0x01) != 0;
-        boolean zero = ((flags >> 1) & 0x01) != 0;
-        boolean neg = ((flags >> 2) & 0x01) != 0;
-        boolean over = ((flags >> 3) & 0x01) != 0;
+        boolean over = ((flags >> 1) & 0x01) != 0;
+        boolean zero = ((flags >> 2) & 0x01) != 0;
+        boolean neg = ((flags >> 3) & 0x01) != 0;
 
         int control_word = 0;
         String mnemonic = null;
@@ -306,6 +306,16 @@ public class GenControl {
             control_word |= ALU_AMOD10B | DA_ALU | DR_B;
             mnemonic = "MDB10_A,B";
         }
+        // CMP A,B
+        else if (opcode == 0x34) {
+            control_word |= ALU_AMINUSB | DA_ALU ;
+            mnemonic = "CMP_A,B";
+        }
+        // CMP B,A
+        else if (opcode == 0x35) {
+            control_word |= ALU_BMINUSA | DA_ALU ;
+            mnemonic = "CMP_A,B";
+        }
 
 
         // STO 0 (MEM=0)
@@ -372,20 +382,78 @@ public class GenControl {
         // OUT A
         else if (opcode == 0x4c) {
             control_word |= ALU_A | DA_ALU | DR_IO;
-            mnemonic = "OUT A";
+            mnemonic = "OUT_A";
         }
         // OUT B
         else if (opcode == 0x4d) {
             control_word |= ALU_B | DA_ALU | DR_IO;
-            mnemonic = "OUT B";
+            mnemonic = "OUT_B";
+        }
+        // IN A
+        else if (opcode == 0x4e) {
+            control_word |= DA_IO | DR_A;
+            mnemonic = "IN_A";
+        }
+        // IN B
+        else if (opcode == 0x4f) {
+            control_word |= DA_IO | DR_B;
+            mnemonic = "IN_B";
         }
 
 
         // JUMPS
-        // JMP
+        // Unconditional JMP
         else if (opcode == 0x50) {
-            control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+            control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT | NO_FETCH;
             mnemonic = "JMP";
+            bytes = 2;
+        }
+        // JGT
+        else if (opcode == 0x51) {
+            control_word = NO_FETCH;
+            if (carry)
+                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;;
+            mnemonic = "JGT";
+            bytes = 2;
+        }
+        // JLE
+        else if (opcode == 0x52) {
+            control_word = NO_FETCH;
+            if (!carry)
+                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+            mnemonic = "JLE";
+            bytes = 2;
+        }
+        // JEQ
+        else if (opcode == 0x53) {
+            control_word = NO_FETCH;
+            if (zero)
+                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+            mnemonic = "JEQ";
+            bytes = 2;
+        }
+        // JNE
+        else if (opcode == 0x54) {
+            control_word = NO_FETCH;
+            if (!zero)
+                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+            mnemonic = "JNE";
+            bytes = 2;
+        }
+        // JPV
+        else if (opcode == 0x55) {
+            control_word = NO_FETCH;
+            if (over)
+                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+            mnemonic = "JPV";
+            bytes = 2;
+        }
+        // JPN
+        else if (opcode == 0x56) {
+            control_word = NO_FETCH;
+            if (neg)
+                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+            mnemonic = "JPN";
             bytes = 2;
         }
 

@@ -353,6 +353,12 @@ public class Psim {
         long last = System.nanoTime();
         long now = last;
 
+        boolean carry = false;
+        boolean overflow = false;
+        boolean zero = false;
+        boolean negative = false;
+        int flags = 0;
+
         while( true ) {
             try {
                 // Cycle accurate timing
@@ -375,11 +381,6 @@ public class Psim {
                 int ctrl1 = ((((char) ctrl1a[decodeidx1]) << 8) | ((char) ctrl1b[decodeidx1]));
                 int ctrl2 = ((((char) ctrl2a[decodeidx2]) << 8) | ((char) ctrl2b[decodeidx2]));
                 int ctrl = ctrl2 << 16 | ctrl1;
-
-                boolean carry = false;
-                boolean overflow = false;
-                boolean zero = false;
-                boolean negative = false;
 
                 // Check Fetch condition
                 boolean fetch_stage_1 = false;
@@ -534,24 +535,22 @@ public class Psim {
                 if (debug) {
                     System.out.printf("A:%02x B:%02x OP:%s RES:%04x \n", A, B, ALUop[alu_op], aluresult);
                 }
+                ALU_OUT = aluresult & 0xff;
 
                 // Store value of flags in FR
-                if ((ctrl & DA_ALU) != 0) {
-                    FR = (aluresult >> FRSHIFT) & 0x01f;
-                    // Extract the flags from the result, and remove from the result
-                    carry = ((aluresult >> CSHIFT) & 1) == 1;
-                    overflow = ((aluresult >> VSHIFT) & 1) == 1;
-                    zero = ((aluresult >> ZSHIFT) & 1) == 1;
-                    negative = ((aluresult >> NSHIFT) & 1) == 1;
-                    if (debug) {
-                        System.out.printf("FL C:%b O:%b Z:%b N:%b\n", carry, overflow, zero, negative);
-                    }
+                FR = (aluresult >> FRSHIFT) & 0x01f;
+                // Extract the flags from the result, and remove from the result
+                carry = ((aluresult >> CSHIFT) & 1) == 1;
+                overflow = ((aluresult >> VSHIFT) & 1) == 1;
+                zero = ((aluresult >> ZSHIFT) & 1) == 1;
+                negative = ((aluresult >> NSHIFT) & 1) == 1;
+                if (debug) {
+                    System.out.printf("FL %04x C:%b O:%b Z:%b N:%b\n", aluresult, carry, overflow, zero, negative);
                 }
+
                 if (debug)
                     System.out.println();
                 
-                ALU_OUT = aluresult & 0xff;
-
                 // Do graphics
                 // Blit image and flip every so often
                 if (System.currentTimeMillis() - time > 20) {
