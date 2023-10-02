@@ -228,11 +228,11 @@ public class Psim {
 
         int IRSHIFT  = 0;
         int FRSHIFT = 8;
-        int CSHIFT = 8;
-        int VSHIFT = 9;
-        int ZSHIFT = 10;
-        int NSHIFT = 11;
-        int DSHIFT = 12;
+        int CSHIFT = 0;
+        int VSHIFT = 1;
+        int ZSHIFT = 2;
+        int NSHIFT = 3;
+        int DSHIFT = 4;
 
         int LOAD_K_SHIFT = 5;
         int NO_FETCH_SHIFT = 6;
@@ -377,6 +377,7 @@ public class Psim {
                 // Work out the decode PIPELINE ROM index
                 int decodeidx1 = (FR << FRSHIFT) | (PIPE1 << IRSHIFT);
                 int decodeidx2 = (FR << FRSHIFT) | (PIPE2 << IRSHIFT);
+
                 // Get the microinstruction
                 int ctrl1 = ((((char) ctrl1a[decodeidx1]) << 8) | ((char) ctrl1b[decodeidx1]));
                 int ctrl2 = ((((char) ctrl2a[decodeidx2]) << 8) | ((char) ctrl2b[decodeidx2]));
@@ -431,7 +432,7 @@ public class Psim {
                 }
 
                 // Determine if Memory Address is PC or MAR
-                int mem_address = address_assert == ADDRESS_ASSERT ? AH << 8 | AL : PC;
+                int mem_address = (address_assert == ADDRESS_ASSERT) ? AH << 8 | AL : PC;
 
                 if (debug)
                     System.out.printf("data_read %x data_bus %02x \n", data_read, data_bus);
@@ -538,15 +539,18 @@ public class Psim {
                 ALU_OUT = aluresult & 0xff;
 
                 // Store value of flags in FR
-                FR = (aluresult >> FRSHIFT) & 0x01f;
-                // Extract the flags from the result, and remove from the result
-                carry = ((aluresult >> CSHIFT) & 1) == 1;
-                overflow = ((aluresult >> VSHIFT) & 1) == 1;
-                zero = ((aluresult >> ZSHIFT) & 1) == 1;
-                negative = ((aluresult >> NSHIFT) & 1) == 1;
-                if (debug) {
-                    System.out.printf("FL %04x C:%b O:%b Z:%b N:%b\n", aluresult, carry, overflow, zero, negative);
+                if (data_assert == DA_ALU) {
+                    FR = flags;
+                    // Extract the flags from the result, and remove from the result
+                    carry = ((FR >> CSHIFT) & 1) == 1;
+                    overflow = ((FR >> VSHIFT) & 1) == 1;
+                    zero = ((FR >> ZSHIFT) & 1) == 1;
+                    negative = ((FR >> NSHIFT) & 1) == 1;
+                    if (debug) {
+                        System.out.printf("FL %04x C:%b O:%b Z:%b N:%b\n", aluresult, carry, overflow, zero, negative);
+                    }
                 }
+                flags = ALURom[alu_addr + 1] & 0x01f;
 
                 if (debug)
                     System.out.println();
@@ -577,7 +581,7 @@ public class Psim {
                 if (!fast && cycle_speed == 0)
                     Thread.yield();
 
-                if (PIPE0 == 0xff) {
+                if (PIPE1 == 0xff) {
                     System.exit(0);
                 }
             } finally {
