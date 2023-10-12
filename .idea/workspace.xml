@@ -28,10 +28,13 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="246ed073-53d5-4bbf-a247-d221f7f48796" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/Examples/add.s" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/pasm.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/instr.bin" beforeDir="false" afterPath="$PROJECT_DIR$/instr.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Examples/add.bin" beforeDir="false" afterPath="$PROJECT_DIR$/Examples/add.bin" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/instr.bin" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/opcodes" beforeDir="false" afterPath="$PROJECT_DIR$/opcodes" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Psim.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/Psim.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/pip-sim.iml" beforeDir="false" afterPath="$PROJECT_DIR$/pip-sim.iml" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -67,7 +70,7 @@
       <recent name="C:\dev\pip-sim\src" />
     </key>
   </component>
-  <component name="RunManager" selected="Application.Psim">
+  <component name="RunManager" selected="Application.GenControl">
     <configuration name="GenControl" type="Application" factoryName="Application">
       <option name="MAIN_CLASS_NAME" value="GenControl" />
       <module name="pip-sim" />
@@ -80,7 +83,7 @@
       <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
       <option name="MAIN_CLASS_NAME" value="Psim" />
       <module name="pip-sim" />
-      <option name="PROGRAM_PARAMETERS" value=" -v -f" />
+      <option name="PROGRAM_PARAMETERS" value="-v -f" />
       <RunnerSettings RunnerId="Run" />
       <ConfigurationWrapper RunnerId="Run" />
       <method v="2">
@@ -91,9 +94,30 @@
       <option name="JAR_PATH" value="$PROJECT_DIR$/out/artifacts/csim_jar/csim.jar" />
       <method v="2" />
     </configuration>
+    <configuration name="pasm" type="PythonConfigurationType" factoryName="Python" nameIsGenerated="true">
+      <module name="pip-sim" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="C:\dev\pip-sim\venv\Scripts\python.exe" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="false" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/pasm.py" />
+      <option name="PARAMETERS" value="Examples/add.s" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <list>
-      <item itemvalue="Application.Psim" />
       <item itemvalue="Application.GenControl" />
+      <item itemvalue="Application.Psim" />
       <item itemvalue="JAR Application.csim.jar" />
     </list>
   </component>
@@ -121,21 +145,5 @@
         </entry>
       </map>
     </option>
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/Psim.java</url>
-          <line>441</line>
-          <option name="timeStamp" value="10" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/Psim.java</url>
-          <line>372</line>
-          <option name="timeStamp" value="12" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>
