@@ -320,7 +320,8 @@ public class Psim {
         }
 
         for(int i=0; i<Vram.length; i++) {
-            Vram[i] = (char)(256*Math.random());
+//            Vram[i] = (char)(256*Math.random());
+            Vram[i] = (char)(i%0xff);
         }
 
 
