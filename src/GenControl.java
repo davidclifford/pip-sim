@@ -96,9 +96,9 @@ public class GenControl {
     private static int do_instruction(int opcode, int flags, BufferedWriter bw) throws IOException
     {
         boolean carry = (flags & 0x01) != 0;
-        boolean over = ((flags >> 1) & 0x01) != 0;
-        boolean zero = ((flags >> 2) & 0x01) != 0;
-        boolean neg = ((flags >> 3) & 0x01) != 0;
+        boolean over = (flags & 0x02) != 0;
+        boolean zero = (flags & 0x04) != 0;
+        boolean neg = (flags & 0x08) != 0;
 
         int control_word = 0;
         String mnemonic = null;
@@ -314,7 +314,17 @@ public class GenControl {
         // CMP B,A
         else if (opcode == 0x35) {
             control_word |= ALU_BMINUSA | DA_ALU ;
-            mnemonic = "CMP_A,B";
+            mnemonic = "CMP_B,A";
+        }
+        // CMP A
+        else if (opcode == 0x36) {
+            control_word |= ALU_A | DA_ALU ;
+            mnemonic = "CMP_A";
+        }
+        // CMP B
+        else if (opcode == 0x37) {
+            control_word |= ALU_B | DA_ALU ;
+            mnemonic = "CMP_B";
         }
 
 
@@ -408,53 +418,58 @@ public class GenControl {
             mnemonic = "JMP";
             bytes = 2;
         }
-        // JGT
+        // JGE
         else if (opcode == 0x51) {
-            control_word = NO_FETCH;
-            if (carry)
-                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;;
-            mnemonic = "JGT";
+            control_word = NO_FETCH | LOAD_CONSTANT;
+            if (!carry)
+                control_word |= DA_CONSTANT | DR_PC ;
+            mnemonic = "JGE";
             bytes = 2;
         }
-        // JLE
+        // JLT
         else if (opcode == 0x52) {
-            control_word = NO_FETCH;
-            if (!carry)
-                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
-            mnemonic = "JLE";
+            control_word = NO_FETCH | LOAD_CONSTANT;
+            if (carry)
+                control_word |= DA_CONSTANT | DR_PC;
+            mnemonic = "JLT";
             bytes = 2;
         }
         // JEQ
         else if (opcode == 0x53) {
-            control_word = NO_FETCH;
+            control_word = NO_FETCH | LOAD_CONSTANT;
             if (zero)
-                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+                control_word |= DA_CONSTANT | DR_PC;
             mnemonic = "JEQ";
             bytes = 2;
         }
         // JNE
         else if (opcode == 0x54) {
-            control_word = NO_FETCH;
+            control_word = NO_FETCH | LOAD_CONSTANT;
             if (!zero)
-                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+                control_word |= DA_CONSTANT | DR_PC;
             mnemonic = "JNE";
             bytes = 2;
         }
         // JPV
         else if (opcode == 0x55) {
-            control_word = NO_FETCH;
+            control_word = NO_FETCH | LOAD_CONSTANT;
             if (over)
-                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+                control_word |= DA_CONSTANT | DR_PC;
             mnemonic = "JPV";
             bytes = 2;
         }
         // JPN
         else if (opcode == 0x56) {
-            control_word = NO_FETCH;
+            control_word = NO_FETCH | LOAD_CONSTANT;
             if (neg)
-                control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT;
+                control_word |= DA_CONSTANT | DR_PC;
             mnemonic = "JPN";
             bytes = 2;
+        }
+
+        //HLT PSEUDO INSTRUCTION actually a NOP
+        else if (opcode == 0xff) {
+            mnemonic = "HLT";
         }
 
         if (mnemonic != null && flags == 0x00) {
@@ -487,16 +502,25 @@ public class GenControl {
         }
     }
 
+    static private String toFlags(int flags) {
+        String f = "";
+        if ((flags & 0x01) == 0) f += "c"; else f+="C";
+        if ((flags & 0x02) == 0) f += "v"; else f+="V";
+        if ((flags & 0x04) == 0) f += "z"; else f+="Z";
+        if ((flags & 0x08) == 0) f += "n"; else f+="N";
+        return f;
+    }
+
     public static void main(String[] args) {
         // TODO: Read ROMs first and compare to indicate which ROMs changed
         BufferedWriter bw;
         System.out.println("Creating Control Signals for Pip pipelined CPU");
         try {
             bw = new BufferedWriter(new FileWriter("opcodes", false));
-            for (int flags = 0; flags < 16; flags++) {
-                for (int opcode = 0; opcode < 0x100; opcode++) {
+            for (int opcode = 0; opcode < 0x100; opcode++) {
+                for (int flags = 0; flags < 16; flags++) {
                     int control_word = do_instruction(opcode, flags, bw);
-                    System.out.printf("%02x %08x   %s\n", opcode, control_word, toBinary(control_word));
+                    System.out.printf("%02x %s %08x   %s\n", opcode, toFlags(flags), control_word, toBinary(control_word));
                     int addr = opcode | flags << 8;
                     ctrl1b[addr] = (char) ((control_word) & 0xff);
                     ctrl1a[addr] = (char) ((control_word >> 8) & 0xff);

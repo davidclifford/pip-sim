@@ -423,9 +423,9 @@ public class Psim {
                 } else if (data_assert == DA_IO) {
                     if (keys.length() > 0) {
                         data_bus = keys.charAt(0);
-                        //if (loadop != 0) {
-                        //  keys = keys.substring(1);
-                        //}
+                        if (data_bus != 0) {
+                          keys = keys.substring(1);
+                        }
                     } else {
                         data_bus = 0;
                     }
