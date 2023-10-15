@@ -413,10 +413,18 @@ public class Psim {
                 if (fetch_stage_2)
                     PC = (PC + 1) & 0xffff;
 
+                // Determine if Memory Address is PC or MAR
+                int mem_address = (address_assert == ADDRESS_ASSERT) ? ((AH << 8) | AL) : PC;
+
                 // Assert to Databus
                 int data_bus = 0;
                 if (data_assert == DA_MEM) {
-                    data_bus = PIPE0;
+//                    data_bus = PIPE0;
+                    if (mem_address >= 0x8000) {
+                        data_bus = Ram[mem_address - 0x8000];
+                    } else {
+                        data_bus = Rom[mem_address];
+                    }
                 } else if (data_assert == DA_ALU) {
                     data_bus = ALU_OUT;
                 } else if (data_assert == DA_CONSTANT) {
@@ -431,12 +439,6 @@ public class Psim {
                         data_bus = 0;
                     }
                 }
-
-                // Determine if Memory Address is PC or MAR
-                int mem_address = (address_assert == ADDRESS_ASSERT) ? AH << 8 | AL : PC;
-
-                if (debug)
-                    System.out.printf("data_read %x data_bus %02x \n", data_read, data_bus);
 
                 //Load from the data bus
                 if (data_read == DR_A) {
@@ -456,7 +458,7 @@ public class Psim {
                 }
                 if (data_read == DR_MEM) {
                     if (mem_address >= 0x8000) {
-                        Ram[mem_address] = (char) data_bus;
+                        Ram[mem_address-0x8000] = (char) data_bus;
                     } else {
                         // TODO: Bank Register (SSD etc)
                         Vram[mem_address] = (char) data_bus;
@@ -517,6 +519,10 @@ public class Psim {
                     if (debug)
                         System.out.printf("->PC %02x\n", data_bus);
                 }
+                if (debug) {
+                    System.out.printf("Address %04x data_read %02x data_ass %02x data_bus %02x \n", mem_address, data_read, data_assert, data_bus);
+                }
+
 
                 //-------- Stage 1 Pipeline -------------------
                 int load_constant = ctrl & LOAD_CONSTANT;

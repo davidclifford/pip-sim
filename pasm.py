@@ -46,7 +46,7 @@ def find_mnemonic(opcode):
 	if index is None:
 		print(f'Opcode {opcode} not found')
 		exit(0)
-	return int(hexcode[index]), opcode[biggest+1:], int(oplen[index])
+	return int(hexcode[index]), opcode[biggest+1:].lstrip().rstrip(), int(oplen[index])
 
 
 try:
@@ -80,6 +80,7 @@ label = []
 label_address = []
 
 # FIRST PASS
+print('--- FIRST PASS ---')
 for line in lines:
 	ln = line.lstrip().rstrip().replace(',', ' ')
 	# Comments
@@ -88,17 +89,9 @@ for line in lines:
 		continue
 	if ln.startswith('#'):
 		continue
-	first_token = ln.split(' ')[0].lower()
-	try:
-		second_token = ln.split(' ')[1].lower()
-	except IndexError:
-		second_token = None
-	# ORG
-	if first_token == 'org':
-		PC = to_num_or_die(second_token)
-		continue
+
 	# LABELS
-	if first_token.endswith(":"):
+	if ln.split(' ')[0].endswith(":"):
 		lab = ln.split(':')[0]
 		# LABEL
 		if lab in label:
@@ -108,18 +101,57 @@ for line in lines:
 		label_address.append(PC)
 		print(f'LABEL "{lab}" found, ADDRESS {hex(PC)}')
 		ln = ln[len(lab)+1:].lstrip().rstrip()
+		if len(ln) == 0:
+			continue
 
-	if len(ln) == 0:
+	first_token = ln.split(' ')[0].lower()
+	try:
+		second_token = ln.split(' ')[1]
+	except IndexError:
+		second_token = None
+
+	print(f'[{first_token}]')
+
+	# ORG
+	if first_token == 'org':
+		PC = to_num_or_die(second_token)
 		continue
+	# DB
+	if first_token == 'db':
+		if second_token is None:
+			PC += 1
+		elif second_token.startswith("'"):  # Non-zero terminarted strings
+			PC += (len(second_token) - 2)
+		elif second_token.startswith('"'):  # Zero terminated strings
+			PC += (len(second_token) - 1)
+		elif second_token.startswith('$'):  # Hex numbers
+			PC += 1
+		elif second_token.startswith('%'):  # Binary numbers
+			PC += 1
+		elif second_token[0].isdigit():  # Numbers
+			PC += 1
+		elif second_token.startswith('('):  # Binary numbers
+			if second_token.endswith(')'):
+				PC += to_num_or_die(second_token[1:-1])
+			else:
+				print('Missing closing )')
+				exit(1)
+		else:
+			print(f'Unknown param {second_token}')
+		continue
+
+	# OPCODES
 	op_code, rest, num_args = find_mnemonic(ln)
 	print(f'{hex(PC)} [{ln}]')
 	PC += num_args
 
 # SECOND PASS
+print('--- SECOND PASS ---')
 PC = 0
 for line in lines:
 	min_addr = min(min_addr, PC)
-	max_addr = max(max_addr, PC)
+	if PC < 0x8000:
+		max_addr = max(max_addr, PC)
 	ln = line.lstrip().rstrip().replace(',', ' ')
 	# Comments
 	# Ignore blank lines
@@ -134,16 +166,50 @@ for line in lines:
 		ln = ln[len(lab)+1:].lstrip().rstrip()
 	first_token = ln.split(' ')[0].lower()
 	try:
-		second_token = ln.split(' ')[1].lower()
+		second_token = ln.split(' ')[1]
 	except IndexError:
 		second_token = None
+
+	if len(ln) == 0:
+		continue
 
 	# ORG
 	if first_token == 'org':
 		PC = to_num_or_die(second_token)
 		continue
 
-	if len(ln) == 0:
+	# DB Data Bytes, String ' ', StringZ " ", Number 255,$ff,%11111111, Size (4)
+	if first_token == 'db':
+		second_token = line[line.find('db')+2:].lstrip().rstrip()
+		if second_token is None or second_token == '':
+			PC += 1
+		elif second_token.startswith("'"):  # Non-zero terminated strings
+			for c in second_token[1:-1]:
+				output[PC] = ord(c)
+				PC += 1
+		elif second_token.startswith('"'):  # Zero terminated strings
+			for c in second_token[1:-1]:
+				output[PC] = ord(c)
+				PC += 1
+			output[PC] = 0
+			PC += 1
+		elif second_token.startswith('$'):  # Hex numbers
+			output[PC] = to_num_or_die(second_token) & 0xff
+			PC += 1
+		elif second_token.startswith('%'):  # Binary numbers
+			output[PC] = to_num_or_die(second_token) & 0xff
+			PC += 1
+		elif second_token[0].isdigit():  # Numbers
+			output[PC] = to_num_or_die(second_token) & 0xff
+			PC += 1
+		elif second_token.startswith('('):  # Binary numbers
+			if second_token.endswith(')'):
+				PC += to_num_or_die(second_token[1:-1])
+			else:
+				print('Missing closing )')
+				exit(1)
+		else:  # db defaults to 1 byte length
+			PC += 1
 		continue
 
 	# CODE !!!
@@ -153,7 +219,15 @@ for line in lines:
 		print(f'{hex(PC)} {op_code} [{rest}]')
 		PC += 1
 	if num_args > 1:
-		if rest in label:
+		if rest[0] == '>':
+			rest = rest[1:]
+			if rest in label:
+				indx = label.index(rest)
+				address = label_address[indx]
+				print(f'Label {rest} = {address}')
+				print(f'{hex(PC)} {op_code} [{rest}]')
+				output[PC] = address >> 8 & 0xff
+		elif rest in label:
 			indx = label.index(rest)
 			address = label_address[indx]
 			print(f'Label {rest} = {address}')
@@ -164,7 +238,8 @@ for line in lines:
 		else:
 			output[PC] = int(to_num_or_die(rest)) & 0xff
 		PC += 1
-	max_addr = max(max_addr, PC)
+	if PC < 0x8000:
+		max_addr = max(max_addr, PC)
 
 print(f'Min {min_addr} Max {max_addr}')
 
@@ -173,7 +248,7 @@ file_path = os.path.dirname(filename)
 
 print(f'C{min_addr:04x}')
 bin_out = bytearray()
-for i in range(min_addr, max_addr+1):
+for i in range(min_addr, max_addr):
 	print(f'{output[i]:02x}', end=' ')
 	bin_out.append(output[i])
 print()

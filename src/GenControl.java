@@ -326,31 +326,42 @@ public class GenControl {
             control_word |= ALU_B | DA_ALU ;
             mnemonic = "CMP_B";
         }
+        // MOV L,B
+        else if (opcode == 0x38) {
+            control_word |= ALU_B | DA_ALU | DR_MARL;
+            mnemonic = "MOV_L,B";
+        }
 
+        // STO
+        else if (opcode == 0x40) {
+            control_word |= DA_CONSTANT | DR_MEM | ADDRESS_ASSERT | BUS_REQUEST | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "STO";
+            bytes = 2;
+        }
 
         // STO 0 (MEM=0)
         else if (opcode == 0x41) {
-            control_word |= ALU_ZERO | DA_ALU | DR_MEM;
+            control_word |= ALU_ZERO | DA_ALU | DR_MEM | ADDRESS_ASSERT | BUS_REQUEST;
             mnemonic = "STO 0";
         }
         // STO A
         else if (opcode == 0x42) {
-            control_word |= ALU_A | DA_ALU | DR_MEM;
+            control_word |= ALU_A | DA_ALU | DR_MEM | ADDRESS_ASSERT | BUS_REQUEST;
             mnemonic = "STO_A";
         }
         // STO B
         else if (opcode == 0x43) {
-            control_word |= ALU_B | DA_ALU | DR_MEM;
+            control_word |= ALU_B | DA_ALU | DR_MEM | ADDRESS_ASSERT | BUS_REQUEST;
             mnemonic = "STO_B";
         }
         // LDA
         else if (opcode == 0x44) {
-            control_word |= DA_MEM | DR_A;
+            control_word |= DA_MEM | DR_A | ADDRESS_ASSERT | BUS_REQUEST;
             mnemonic = "LDA";
         }
         // LDB
         else if (opcode == 0x45) {
-            control_word |= DA_MEM | DR_B;
+            control_word |= DA_MEM | DR_B | ADDRESS_ASSERT | BUS_REQUEST;
             mnemonic = "LDB";
         }
         // MOV A immediate
