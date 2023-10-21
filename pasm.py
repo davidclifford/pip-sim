@@ -5,6 +5,8 @@ import os
 output = [0] * 0x8000
 min_addr = 0
 max_addr = 0
+jsr = 0xfe00 - 2
+rts = {}
 
 
 def usage():
@@ -47,6 +49,36 @@ def find_mnemonic(opcode):
 		print(f'Opcode {opcode} not found')
 		exit(0)
 	return int(hexcode[index]), opcode[biggest+1:].lstrip().rstrip(), int(oplen[index])
+
+
+def get_mnemonic(opcode):
+	for m in mne:
+		index = mne.index(m)
+		if hexcode[index] == opcode:
+			return mne[index], oplen[index]
+	print(f'Cant find {opcode:02x}')
+	exit(1)
+
+
+def get_value(rest):
+	if rest[0] == '>':
+		rest = rest[1:]
+		if rest in label:
+			indx = label.index(rest)
+			address = label_address[indx]
+			print(f'Label {rest} = {address}')
+			print(f'{hex(PC)} {op_code} [{rest}]')
+			return address >> 8 & 0xff
+	elif rest in label:
+		indx = label.index(rest)
+		address = label_address[indx]
+		print(f'Label {rest} = {address}')
+		print(f'{hex(PC)} {op_code} [{rest}]')
+		return address & 0xff
+	elif rest.startswith("'") or rest.startswith('"'):
+		return ord(rest[1])
+	else:
+		return int(to_num_or_die(rest)) & 0xff
 
 
 try:
@@ -212,6 +244,97 @@ for line in lines:
 			PC += 1
 		continue
 
+	# JSR and RTS macros
+	if first_token == 'jsr':
+		if jsr >= 0xfefe:
+			print('No more return values available')
+			exit(1)
+
+		_, rest, _ = find_mnemonic(ln)
+		ret_val = get_value(rest)
+		if ret_val in rts:
+			jsr = rts[ret_val]
+		else:
+			jsr += 2
+			rts[ret_val] = jsr
+		return_address = PC + 14
+
+		op_code, _, _ = find_mnemonic('MOV H')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = jsr >> 8
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('MOV L')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = jsr & 0xff
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('STO')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = return_address & 0xff
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('MOV L')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = (jsr+1) & 0xff
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('STO')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = return_address >> 8
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('MOV T')
+		output[PC] = op_code
+		PC += 1
+		val = get_value(rest)
+		output[PC] = val >> 8
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('JMP')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = get_value(rest) & 0xff
+		PC += 1
+		continue
+
+	if first_token == 'rts':
+		_, rest, _ = find_mnemonic(ln)
+		ret_val = rts[get_value(rest)]
+
+		op_code, _, _ = find_mnemonic('MOV H')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = (ret_val+1) >> 8
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('MOV L')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = (ret_val+1) & 0xff
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('LDT')
+		output[PC] = op_code
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('MOV L')
+		output[PC] = op_code
+		PC += 1
+		output[PC] = ret_val & 0xff
+		PC += 1
+
+		op_code, _, _ = find_mnemonic('LDP')
+		output[PC] = op_code
+		PC += 1
+
+		continue
+
 	# CODE !!!
 	op_code, rest, num_args = find_mnemonic(ln)
 	if op_code is not None:
@@ -219,27 +342,13 @@ for line in lines:
 		print(f'{hex(PC)} {op_code} [{rest}]')
 		PC += 1
 	if num_args > 1:
-		if rest[0] == '>':
-			rest = rest[1:]
-			if rest in label:
-				indx = label.index(rest)
-				address = label_address[indx]
-				print(f'Label {rest} = {address}')
-				print(f'{hex(PC)} {op_code} [{rest}]')
-				output[PC] = address >> 8 & 0xff
-		elif rest in label:
-			indx = label.index(rest)
-			address = label_address[indx]
-			print(f'Label {rest} = {address}')
-			print(f'{hex(PC)} {op_code} [{rest}]')
-			output[PC] = address & 0xff
-		elif rest.startswith("'") or rest.startswith('"'):
-			output[PC] = ord(rest[1])
-		else:
-			output[PC] = int(to_num_or_die(rest)) & 0xff
+		output[PC] = get_value(rest)
 		PC += 1
 	if PC < 0x8000:
 		max_addr = max(max_addr, PC)
+
+if PC < 0x8000:
+	max_addr = max(max_addr, PC)
 
 print(f'Min {min_addr} Max {max_addr}')
 
@@ -261,3 +370,23 @@ bin_file.close()
 print(f'Binary file writen to {binary_filename}')
 print(bin_out)
 
+# Disassembler
+print()
+print('Disassembly')
+print()
+PC = min_addr
+while PC < max_addr:
+	addr = PC
+	lbl  = ''
+	if addr in label_address:
+		idx = label_address.index(addr)
+		print(f'{label[idx]}:')
+	op = output[PC]
+	PC += 1
+	mnemonic, op_len = get_mnemonic(op)
+	if op_len > 1:
+		param = output[PC]
+		PC += 1
+		print(f'{addr:04x} {mnemonic} {param:02x}')
+	else:
+		print(f'{addr:04x} {mnemonic}')

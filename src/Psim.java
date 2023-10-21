@@ -463,6 +463,7 @@ public class Psim {
                         // TODO: Bank Register (SSD etc)
                         Vram[mem_address] = (char) data_bus;
                     }
+                    if (debug) System.out.printf("%04x ->MEM %02x\n", mem_address, data_bus);
                 }
 //                if (data_read == DR_MEM) {
 //                    // Memory mapped I/O - BANK

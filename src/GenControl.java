@@ -478,6 +478,29 @@ public class GenControl {
             bytes = 2;
         }
 
+        // LDT
+        else if (opcode == 0x60) {
+            control_word |= DA_MEM | DR_T | ADDRESS_ASSERT | BUS_REQUEST;
+            mnemonic = "LDT";
+        }
+        // LDP
+        else if (opcode == 0x61) {
+            control_word |= DA_MEM | DR_PC | ADDRESS_ASSERT ;
+            mnemonic = "LDP";
+        }
+        // JSR (macro in the assembler)
+        else if (opcode == 0x62) {
+            //control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "JSR";
+            bytes = 14;
+        }
+        // RTS (macro in the assembler)
+        else if (opcode == 0x63) {
+            //control_word |= DA_CONSTANT | DR_PC | LOAD_CONSTANT | NO_FETCH;
+            mnemonic = "RTS";
+            bytes = 8;
+        }
+
         //HLT PSEUDO INSTRUCTION actually a NOP
         else if (opcode == 0xff) {
             mnemonic = "HLT";
