@@ -2,7 +2,7 @@ import sys
 import re
 import os
 
-output = [0] * 0x8000
+output = [0] * 0x10000
 min_addr = 0
 max_addr = 0
 jsr = 0xfe00 - 2

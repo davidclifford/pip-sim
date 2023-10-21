@@ -326,10 +326,25 @@ public class GenControl {
             control_word |= ALU_B | DA_ALU ;
             mnemonic = "CMP_B";
         }
-        // MOV L,B
+        // MOV L,A
         else if (opcode == 0x38) {
+            control_word |= ALU_A | DA_ALU | DR_MARL;
+            mnemonic = "MOV_L,A";
+        }
+        // MOV L,B
+        else if (opcode == 0x39) {
             control_word |= ALU_B | DA_ALU | DR_MARL;
             mnemonic = "MOV_L,B";
+        }
+        // MOV H,A
+        else if (opcode == 0x3a) {
+            control_word |= ALU_A | DA_ALU | DR_MARH;
+            mnemonic = "MOV_H,A";
+        }
+        // MOV H,B
+        else if (opcode == 0x3b) {
+            control_word |= ALU_B | DA_ALU | DR_MARH;
+            mnemonic = "MOV_H,B";
         }
 
         // STO
